@@ -15,7 +15,8 @@ document.addEventListener('DOMContentLoaded', function() {
         sampleCounter++;
         const sampleHTML = 
         `
-            <div>
+            <div data-sample-id="${sampleCounter}">
+                <button class="remove-sample" onclick="removeSample(${sampleCounter})">&times;</button>
                 <p>サンプル ${sampleCounter}</p>
                 <div>
                     <label>全体文字列</label>
@@ -29,4 +30,11 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         samplesContainer.insertAdjacentHTML('beforeend', sampleHTML);
     }
+
+    // サンプルを削除
+    window.removeSample = function(sampleId) {
+        const sampleElement = document.querySelector(`[data-sample-id="${sampleId}"]`);
+        sampleElement.remove();
+        sampleCounter--;
+    };
 });
