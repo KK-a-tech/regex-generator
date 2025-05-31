@@ -34,7 +34,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // サンプルを削除
     window.removeSample = function(sampleId) {
         const sampleElement = document.querySelector(`[data-sample-id="${sampleId}"]`);
-        sampleElement.remove();
-        sampleCounter--;
+        if (sampleElement && samplesContainer.children.length > 1) {
+            sampleElement.remove();
+            sampleCounter--;
+        }
     };
 });
