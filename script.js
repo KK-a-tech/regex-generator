@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return samples;
     }
 
-    // 正規表現を生成(表示)
+    // 正規表現を生成
     function generateRegex() {
         const samples = getAllSamples();
 
@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return score;
     }
 
-      // 全サンプルで正規表現をテスト
+    // 全サンプルで正規表現をテスト
     function testRegexOnAllSamples(regexPattern, samples) {
         try {
             let allTestsHTML = '';
@@ -397,5 +397,4 @@ document.addEventListener('DOMContentLoaded', function() {
         regexContainer.style.display = 'none';
         testContainer.style.display = 'none';
     }
-
 });
