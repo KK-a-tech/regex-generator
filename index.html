@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正規表現生成アプリ(仮)</title>
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div>
+        <h1>マッチくん~正規表現生成アプリ~</h1>
+        <div>
+            <h2>サンプルデータ入力</h2>
+            <div id="samplesContainer">
+                <div class="sample-group" data-sample-id="1">
+                    <p>サンプル 1</p>
+                    <div>
+                        <label>全体文字列</label>
+                        <input type="text" class="full-text" placeholder="例 : test@example.com">
+                    </div>
+                    <div>
+                        <label>取得したい文字列</label>
+                        <input type="text" class="target-text" placeholder="例 : test">
+                    </div>
+                </div>
+            </div>
+            <button id="addSampleBtn">+ サンプルを追加</button>
+        </div>
+        <button id="generateBtn">正規表現を生成</button>
+
+        <div id="errorContainer" style="display: none;"></div>
+
+        <div id="regexContainer" style="display: none;">
+            <h2>生成された正規表現</h2>
+            <div>
+                <code id="regexResult">regexResult</code>
+            </div>
+        </div>
+        <div id="testContainer" style="display: none;">
+            <h2>各サンプルでのテスト結果</h2>
+            <div id="testResults">Result</div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
