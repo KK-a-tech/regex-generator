@@ -75,6 +75,51 @@ h2 {
     margin-bottom: 0;
 }
 
+/* 使用方法セクション */
+.instructions {
+    background: linear-gradient(45deg, #fef5e7, #fed7aa);
+    border: 2px solid #f6ad55;
+    border-radius: 15px;
+    padding: 25px;
+    margin: 20px 0;
+    position: relative;
+}
+
+.instructions h3 {
+    color: #c05621;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+    padding-left: 15px;
+    margin-top: 0;
+}
+
+.instructions ol {
+    color: #744210;
+    line-height: 1.7;
+    padding-left: 20px;
+    margin: 0;
+}
+
+.instructions li {
+    margin-bottom: 12px;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.instructions li:last-child {
+    margin-bottom: 0;
+}
+
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading button {
+    cursor: not-allowed;
+}
+
 /* ラベル */
 label {
     display: block;
