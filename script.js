@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const generateBtn = document.getElementById('generateBtn');
     const regexContainer = document.getElementById('regexContainer');
     const regexResult = document.getElementById('regexResult');
+    const testContainer = document.getElementById('testContainer');
 
     // イベント登録
     addSampleBtn.addEventListener('click', addSample);
