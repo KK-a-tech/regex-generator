@@ -1,9 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
-
     // サンプル数の計算用
     let sampleCounter = 1;
 
-    //　要素の取得
+    // 要素の取得
     const samplesContainer = document.getElementById('samplesContainer');
     const addSampleBtn = document.getElementById('addSampleBtn');
     const generateBtn = document.getElementById('generateBtn');
@@ -49,21 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // データを取得
     function getAllSamples() {
-// debug
-        // const samples = [];
-        const samples = [
-            {
-                id: 1,
-                fullText: 'fullText.test',
-                targetText: 'test',
-            },
-            {
-                id: 2,
-                fullText: 'fullText2.test2',
-                targetText: 'test2',
-            },
-        ];
-
+        const samples = [];
         const sampleGroups = document.querySelectorAll('.sample-group');
         
         sampleGroups.forEach((group, index) => {
@@ -113,190 +98,229 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function generateCommonRegex(samples) {
-        const allPatterns = [];
-
-        for (const sample of samples) {
-            const patterns = generateAllPossiblePatterns(sample.fullText, sample.targetText);
-            allPatterns.push({ sampleId: sample.id, patterns, sample });
-        }
-
-        return findBestCommonPattern(allPatterns);
+        return createDirectContextPattern(samples);
     }
 
-    function generateAllPossiblePatterns(fullText, targetText) {
-        const patterns = [];
-        let startIndex = 0;
+    function createDirectContextPattern(samples) {
+        const contextData = samples.map(sample => {
+            const targetIndex = sample.fullText.indexOf(sample.targetText);
+            
+            if (targetIndex === -1) {
+                throw new Error(`ターゲットテキスト "${sample.targetText}" が見つかりません`);
+            }
+            
+            const beforeChar = targetIndex > 0 ? sample.fullText[targetIndex - 1] : '';
+            const afterIndex = targetIndex + sample.targetText.length;
+            const afterChar = afterIndex < sample.fullText.length ? sample.fullText[afterIndex] : '';
 
-        while (true) {
-            const index = fullText.indexOf(targetText, startIndex);
-            if (index === -1) break;
+            const beforeContext = targetIndex > 0 ? sample.fullText.substring(Math.max(0, targetIndex - 3), targetIndex) : '';
+            const afterContext = afterIndex < sample.fullText.length ? sample.fullText.substring(afterIndex, Math.min(sample.fullText.length, afterIndex + 3)) : '';
+            
+            return {
+                sample,
+                targetIndex,
+                beforeChar,
+                afterChar,
+                beforeContext,
+                afterContext,
+                targetText: sample.targetText
+            };
+        });
 
-            const pattern = generatePatternAtIndex(fullText, targetText, index);
-            patterns.push(pattern);
+        const commonBeforeChar = findCommonCharacter(contextData.map(data => data.beforeChar));
+        const commonAfterChar = findCommonCharacter(contextData.map(data => data.afterChar));
 
-            startIndex = index + 1;
-        }
+        const targets = contextData.map(data => data.targetText);
+        const capturePattern = createOptimalCapture(targets);
 
-        return patterns;
-    }
-
-    function generatePatternAtIndex(fullText, targetText, targetIndex) {
-        let escapedTarget = escapeRegExp(targetText);
-        const afterTargetIndex = targetIndex + targetText.length;
-        const beforeContext = analyzeContext(fullText, targetIndex, 'before');
-        const afterContext = analyzeContext(fullText, afterTargetIndex, 'after');
-        const capturePattern = `(${escapedTarget})`;
-
-        return {
-            before: beforeContext,
-            capture: capturePattern,
-            after: afterContext,
-            original: targetText,
-            index: targetIndex,
-            score: calculatePatternScore(beforeContext, afterContext, fullText, targetIndex)
-        };
-    }
-
-    function analyzeContext(fullText, position, direction) {
-        if (direction === 'before' && position === 0) return '';
-        if (direction === 'after' && position >= fullText.length) return '';
-
-        let contextLength = Math.min(5, direction === 'before' ? position : fullText.length - position);
-        let contextText = direction === 'before'
-            ? fullText.substring(position - contextLength, position)
-            : fullText.substring(position, position + contextLength);
-
-        return createContextPattern(contextText, direction);
-    }
-
-    function createContextPattern(text, direction) {
-        if (!text) return '';
         let pattern = '';
-        for (let i = 0; i < text.length; i++) {
-            const actualChar = direction === 'before' ? text[text.length - 1 - i] : text[i];
-            pattern = direction === 'before' ? escapeRegExp(actualChar) + pattern : pattern + escapeRegExp(actualChar);
+
+        if (commonBeforeChar && commonBeforeChar !== '') {
+            pattern += escapeRegExp(commonBeforeChar);
         }
+
+        pattern += capturePattern;
+
+        if (commonAfterChar && commonAfterChar !== '') {
+            pattern += escapeRegExp(commonAfterChar);
+        }
+
+        if (pattern === capturePattern) {
+            return createFallbackWithContext(contextData);
+        }
+        
         return pattern;
     }
 
-    function findBestCommonPattern(allPatterns) {
-        const candidates = [];
-        for (const samplePatterns of allPatterns) {
-            const sortedPatterns = samplePatterns.patterns.sort((a, b) => b.score - a.score);
-            for (let i = 0; i < Math.min(3, sortedPatterns.length); i++) {
-                candidates.push({ pattern: sortedPatterns[i], sampleId: samplePatterns.sampleId });
-            }
-        }
-
-        let bestPattern = null;
-        let bestScore = -1;
-
-        for (const candidate of candidates) {
-            const testPattern = createTestPattern(candidate.pattern, allPatterns);
-            const score = evaluatePatternOnAllSamples(testPattern, allPatterns);
-            if (score > bestScore) {
-                bestScore = score;
-                bestPattern = testPattern;
-            }
-        }
-
-        return bestPattern || createFallbackPattern(allPatterns);
+    function findCommonCharacter(characters) {
+        if (characters.length === 0) return '';
+        
+        const firstChar = characters[0];
+        const isCommon = characters.every(char => char === firstChar);
+        
+        return isCommon ? firstChar : '';
     }
 
-    function createTestPattern(basePattern, allPatterns) {
-        const commonBefore = findFlexibleCommonContext(allPatterns.flatMap(sp => sp.patterns.map(p => p.before)));
-        const commonAfter = findFlexibleCommonContext(allPatterns.flatMap(sp => sp.patterns.map(p => p.after)));
-        const targets = allPatterns.map(sp => sp.sample.targetText);
+    function createFallbackWithContext(contextData) {
+        const beforeContexts = contextData.map(data => data.beforeContext);
+        const afterContexts = contextData.map(data => data.afterContext);
+        
+        const commonBefore = findCommonSuffix(beforeContexts);
+        const commonAfter = findCommonPrefix(afterContexts);
+        
+        const targets = contextData.map(data => data.targetText);
         const capturePattern = createOptimalCapture(targets);
-        return `${commonBefore}${capturePattern}${commonAfter}`;
+        
+        let pattern = '';
+        
+        if (commonBefore && commonBefore.length > 0) {
+            pattern += escapeRegExp(commonBefore);
+        }
+        
+        pattern += capturePattern;
+        
+        if (commonAfter && commonAfter.length > 0) {
+            pattern += escapeRegExp(commonAfter);
+        }
+        
+        if (pattern === capturePattern) {
+            return createPositionSpecificPattern(contextData);
+        }
+        
+        return pattern;
     }
 
-    function findFlexibleCommonContext(contexts) {
-        const nonEmptyContexts = contexts.filter(c => c);
-        const contextCounts = {};
-        nonEmptyContexts.forEach(candidate => {
-            contextCounts[candidate] = 0;
-            nonEmptyContexts.forEach(other => {
-                if (other.includes(candidate)) contextCounts[candidate]++;
-            });
+    function findCommonPrefix(strings) {
+        if (strings.length === 0 || strings.some(s => !s)) return '';
+        
+        const minLength = Math.min(...strings.map(s => s.length));
+        let commonPrefix = '';
+        
+        for (let i = 0; i < minLength; i++) {
+            const chars = strings.map(s => s[i]);
+            if (chars.every(char => char === chars[0])) {
+                commonPrefix += chars[0];
+            } else {
+                break;
+            }
+        }
+        
+        return commonPrefix;
+    }
+
+    function findCommonSuffix(strings) {
+        if (strings.length === 0 || strings.some(s => !s)) return '';
+        
+        const minLength = Math.min(...strings.map(s => s.length));
+        let commonSuffix = '';
+        
+        for (let i = 1; i <= minLength; i++) {
+            const chars = strings.map(s => s[s.length - i]);
+            if (chars.every(char => char === chars[0])) {
+                commonSuffix = chars[0] + commonSuffix;
+            } else {
+                break;
+            }
+        }
+        
+        return commonSuffix;
+    }
+
+    function createPositionSpecificPattern(contextData) {
+        const positionAnalysis = contextData.map(data => {
+            const { sample, targetText } = data;
+            const allMatches = [];
+            let searchIndex = 0;
+
+            while (true) {
+                const index = sample.fullText.indexOf(targetText, searchIndex);
+                if (index === -1) break;
+                allMatches.push(index);
+                searchIndex = index + 1;
+            }
+            
+            const targetPosition = allMatches.indexOf(data.targetIndex);
+            
+            return {
+                ...data,
+                allMatches,
+                targetPosition,
+                totalMatches: allMatches.length
+            };
         });
-        return Object.entries(contextCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || '';
-    }
 
-    function createOptimalCapture(targets) {
-        if (targets.length === 0) return '([^\\s]+)';
+        const positions = positionAnalysis.map(analysis => analysis.targetPosition);
+        const hasCommonPosition = positions.every(pos => pos === positions[0] && pos !== -1);
+        
+        if (hasCommonPosition && positions[0] > 0) {
+            const firstSample = contextData[0];
+            const delimiter = firstSample.beforeChar;
+            
+            if (delimiter && ['-', '.', '_', ':', ' ', ',', ';', '/', '\\'].includes(delimiter)) {
+                const targets = contextData.map(data => data.targetText);
+                const capturePattern = createOptimalCapture(targets);
+                const escapedDelimiter = escapeRegExp(delimiter);
 
-        const commonPrefix = getCommonPrefix(targets);
-        const commonSuffix = getCommonSuffix(targets);
-
-        const captureMiddle = targets.map(t => t.slice(commonPrefix.length, t.length - commonSuffix.length));
-
-        // 汎用キャプチャ部分（数値や英字など）を判定
-        let middlePattern = '.*';
-        if (captureMiddle.every(t => /^\d+$/.test(t))) {
-            middlePattern = '\\d+';
-        } else if (captureMiddle.every(t => /^[a-zA-Z]+$/.test(t))) {
-            middlePattern = '[a-zA-Z]+';
-        } else if (captureMiddle.every(t => /^[a-zA-Z0-9]+$/.test(t))) {
-            middlePattern = '[a-zA-Z0-9]+';
-        }
-
-        return escapeRegExp(commonPrefix) + `(${middlePattern})` + escapeRegExp(commonSuffix);
-    }
-
-    function getCommonPrefix(strings) {
-        if (!strings.length) return '';
-        let prefix = strings[0];
-        for (let i = 1; i < strings.length; i++) {
-            while (!strings[i].startsWith(prefix)) {
-                prefix = prefix.slice(0, -1);
+                const position = positions[0];
+                if (position === 1) {
+                    return `${escapedDelimiter}[^${delimiter}]*${escapedDelimiter}${capturePattern}`;
+                }
             }
         }
-        return prefix;
-    }
 
-    function getCommonSuffix(strings) {
-        if (!strings.length) return '';
-        let suffix = strings[0];
-        for (let i = 1; i < strings.length; i++) {
-            while (!strings[i].endsWith(suffix)) {
-                suffix = suffix.slice(1);
-            }
-        }
-        return suffix;
-    }
-
-    function evaluatePatternOnAllSamples(pattern, allPatterns) {
-        let totalScore = 0;
-        for (const { sample } of allPatterns) {
-            try {
-                const regex = new RegExp(pattern, 'g');
-                const matches = Array.from(sample.fullText.matchAll(regex));
-                const matchedValues = matches.map(match => match[1] || match[0]);
-                if (matchedValues.includes(sample.targetText)) totalScore += 10;
-                else if (matchedValues.length > 0) totalScore += 2;
-                else totalScore -= 5;
-            } catch {
-                totalScore -= 10;
-            }
-        }
-        return totalScore;
-    }
-
-    function createFallbackPattern(allPatterns) {
-        const targets = allPatterns.map(sp => sp.sample.targetText);
+        const targets = contextData.map(data => data.targetText);
         return createOptimalCapture(targets);
     }
 
-    function calculatePatternScore(before, after, fullText, index) {
-        let score = (before.length + after.length) * 2;
-        const specialChars = ['-', '_', '.', ':', ' ', ',', ';'];
-        for (const char of before + after) {
-            if (specialChars.includes(char)) score += 5;
+    function createOptimalCapture(targets) {
+        if (targets.every(isNumeric)) {
+            const lengths = targets.map(t => t.length);
+            if (lengths.every(len => len === lengths[0])) {
+                return `(\\d{${lengths[0]}})`;
+            }
+            return '(\\d+)';
         }
-        const relativePosition = index / fullText.length;
-        if (relativePosition > 0.2 && relativePosition < 0.8) score += 3;
-        return score;
+        
+        if (targets.every(isDate)) {
+            return '(\\d{4}[/-]\\d{1,2}[/-]\\d{1,2})';
+        }
+        
+        if (targets.every(isEmail)) {
+            return '([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})';
+        }
+
+        const hasAlpha = targets.some(t => /[a-zA-Z]/.test(t));
+        const hasNumeric = targets.some(t => /\d/.test(t));
+        const hasSpecialChars = targets.some(t => /[^a-zA-Z0-9]/.test(t));
+
+        if (hasSpecialChars) {
+            return '([^\\s]+)';
+        } else if (hasAlpha && hasNumeric) {
+            return '([a-zA-Z0-9]+)';
+        } else if (hasNumeric) {
+            return '(\\d+)';
+        } else if (hasAlpha) {
+            return '([a-zA-Z]+)';
+        }
+
+        return '(.+?)';
+    }
+
+    function isNumeric(text) {
+        return /^\d+$/.test(text);
+    }
+
+    function isDate(text) {
+        return /^\d{4}[/-]\d{1,2}[/-]\d{1,2}$/.test(text) || 
+            /^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/.test(text);
+    }
+
+    function isEmail(text) {
+        return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(text);
+    }
+
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     // 全サンプルで正規表現をテスト
@@ -368,11 +392,6 @@ document.addEventListener('DOMContentLoaded', function() {
             showError('正規表現のテスト中にエラーが発生しました: ' + err.message);
             testContainer.style.display = 'none';
         }
-    }
-
-    // 正規表現の特殊文字をエスケープ処理
-    function escapeRegExp(string) {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     // エラー表示
