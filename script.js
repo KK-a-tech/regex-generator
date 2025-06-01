@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const regexContainer = document.getElementById('regexContainer');
     const regexResult = document.getElementById('regexResult');
     const testContainer = document.getElementById('testContainer');
+    const testResults = document.getElementById('testResults');
 
     // イベント登録
     addSampleBtn.addEventListener('click', addSample);
@@ -54,12 +55,12 @@ document.addEventListener('DOMContentLoaded', function() {
             {
                 id: 1,
                 fullText: 'fullText.test',
-                targetText: '.test',
+                targetText: 'test',
             },
             {
                 id: 2,
                 fullText: 'fullText2.test2',
-                targetText: '.test2',
+                targetText: 'test2',
             },
         ];
 
@@ -104,6 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const regex = generateCommonRegex(samples);
             showRegexResult(regex);
+            testRegexOnAllSamples(regex, samples);
         } catch (err) {
             showError('正規表現の生成中にエラーが発生しました: ' + err.message);
             hideResults();
@@ -297,6 +299,76 @@ document.addEventListener('DOMContentLoaded', function() {
         return score;
     }
 
+      // 全サンプルで正規表現をテスト
+    function testRegexOnAllSamples(regexPattern, samples) {
+        try {
+            let allTestsHTML = '';
+            let allPassed = true;
+            
+            for (const sample of samples) {
+                const re = new RegExp(regexPattern, 'g');
+                const matches = Array.from(sample.fullText.matchAll(re));
+                
+                let testHTML = `<div class="sample-test">`;
+                testHTML += `<div class="sample-test-title">サンプル ${sample.id}のテスト結果</div>`;
+                
+                if (matches.length > 0) {
+                    const matchedValues = matches.map(match => match[1] || match[0]);
+                    const expectedFound = matchedValues.includes(sample.targetText);
+                    
+                    testHTML += `<p><strong>マッチ数:</strong> ${matches.length}件</p>`;
+                    testHTML += `<p><strong>抽出された値:</strong> ${matchedValues.join(', ')}</p>`;
+                    testHTML += `<p><strong>期待値:</strong> ${sample.targetText}</p>`;
+                    testHTML += `<p><strong>結果:</strong> <span style="color: ${expectedFound ? 'green' : 'orange'}">${expectedFound ? '✓ 成功' : '⚠ 部分的'}</span></p>`;
+                    
+                    // ハイライト表示
+                    let highlighted = sample.fullText;
+                    let offset = 0;
+                    
+                    for (const match of matches) {
+                        const matchStart = match.index + offset;
+                        const fullMatchText = match[0];
+                        const captureText = match[1] || match[0];
+                        const captureIndex = fullMatchText.indexOf(captureText);
+                        const captureStart = matchStart + captureIndex;
+                        const captureEnd = captureStart + captureText.length;
+                        
+                        const before = highlighted.substring(0, captureStart);
+                        const capture = highlighted.substring(captureStart, captureEnd);
+                        const after = highlighted.substring(captureEnd);
+                        
+                        highlighted = `${before}<mark>${capture}</mark>${after}`;
+                        offset += '<mark></mark>'.length;
+                    }
+                    
+                    testHTML += `<p><strong>ハイライト:</strong></p><div style="background-color: #f8fafc; padding: 8px; border-radius: 4px;">${highlighted}</div>`;
+                    
+                    if (!expectedFound) allPassed = false;
+                } else {
+                    testHTML += `<p style="color: red;">✗ マッチしませんでした</p>`;
+                    allPassed = false;
+                }
+                
+                testHTML += `</div>`;
+                allTestsHTML += testHTML;
+            }
+            
+            // 全体的な結果を追加
+            const summaryHTML = `
+                <div class="sample-test" style="border-left-color: ${allPassed ? 'green' : 'orange'};">
+                    <div class="sample-test-title">全体の結果</div>
+                    <p><strong>総合評価:</strong> <span style="color: ${allPassed ? 'green' : 'orange'}">${allPassed ? '✓ 全サンプルで成功' : '⚠ 一部サンプルで課題あり'}</span></p>
+                    <p>生成された正規表現は${samples.length}個のサンプルでテストされました。</p>
+                </div>
+            `;
+            
+            testResults.innerHTML = summaryHTML + allTestsHTML;
+            testContainer.style.display = 'block';
+        } catch (err) {
+            showError('正規表現のテスト中にエラーが発生しました: ' + err.message);
+            testContainer.style.display = 'none';
+        }
+    }
 
     // 正規表現の特殊文字をエスケープ処理
     function escapeRegExp(string) {
