@@ -27,11 +27,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p>サンプル ${sampleCounter}</p>
                 <div>
                     <label>全体文字列</label>
-                    <input type="text" class="full-text">
+                    <input type="text" class="full-text" placeholder="例 : test@example.com">
                 </div>
                 <div>
                     <label>取得したい文字列</label>
-                    <input type="text" class="target-text">
+                    <input type="text" class="target-text" placeholder="例 : test">
                 </div>
             </div>
         `;
