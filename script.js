@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const samplesContainer = document.getElementById('samplesContainer');
     const addSampleBtn = document.getElementById('addSampleBtn');
     const generateBtn = document.getElementById('generateBtn');
+    const errorContainer = document.getElementById('errorContainer');
     const regexContainer = document.getElementById('regexContainer');
     const regexResult = document.getElementById('regexResult');
     const testContainer = document.getElementById('testContainer');
@@ -83,7 +84,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // 正規表現を生成(表示)
     function generateRegex() {
         const samples = getAllSamples();
-        const testArray = [];
+
+        // エラーチェック
+        if (samples.length === 0) {
+            showError('少なくとも1つのサンプルで全体文字列と取得したい文字列の両方を入力してください');
+            hideResults();
+            return;
+        }
+        for (const sample of samples) {
+            if (!sample.fullText.includes(sample.targetText)) {
+                showError(`サンプル ${sample.id}: 全体文字列に取得したい文字列が含まれていません`);
+                hideResults();
+                return;
+            }
+        }
+
         try {
              for (const sample of samples) {
                 testText = escapeRegExp(sample.targetText);
@@ -92,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
             result = testArray.join(',');
             showRegexResult(result);
         } catch (err) {
-            console.log('generateRegexでエラーが発生しています。');
+            showError('正規表現の生成中にエラーが発生しました: ' + err.message);
             hideResults();
         }
     }
@@ -100,6 +115,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // 正規表現の特殊文字をエスケープ処理
     function escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // エラー表示
+    function showError(message) {
+        errorContainer.textContent = message;
+        errorContainer.style.display = 'block';
+    }
+
+    // エラー非表示
+    function hideError() {
+        errorContainer.style.display = 'none';
     }
 
     // 結果表示
