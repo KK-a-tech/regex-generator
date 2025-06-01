@@ -99,6 +99,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
+        hideError();
+
         try {
              for (const sample of samples) {
                 testText = escapeRegExp(sample.targetText);
