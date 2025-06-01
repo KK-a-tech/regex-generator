@@ -11,21 +11,21 @@
         <div>
             <h2>サンプルデータ入力</h2>
             <div id="samplesContainer">
-                <div data-sample-id="1">
+                <div class="sample-group" data-sample-id="1">
                     <p>サンプル 1</p>
                     <div>
                         <label>全体文字列</label>
-                        <input type="text">
+                        <input type="text" class="full-text">
                     </div>
                     <div>
                         <label>取得したい文字列</label>
-                        <input type="text">
+                        <input type="text" class="target-text">
                     </div>
                 </div>
             </div>
             <button id="addSampleBtn">+ サンプルを追加</button>
         </div>
-        <button>正規表現を生成</button>
+        <button id="generateBtn">正規表現を生成</button>
         <div>
             <h2>生成された正規表現</h2>
             <div>

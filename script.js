@@ -6,25 +6,27 @@ document.addEventListener('DOMContentLoaded', function() {
     //　要素の取得
     const samplesContainer = document.getElementById('samplesContainer');
     const addSampleBtn = document.getElementById('addSampleBtn');
+    const generateBtn = document.getElementById('generateBtn');
 
     // イベント登録
     addSampleBtn.addEventListener('click', addSample);
+    generateBtn.addEventListener('click', getAllSamples);
 
     // サンプルを追加
     function addSample() {
         sampleCounter++;
         const sampleHTML = 
         `
-            <div data-sample-id="${sampleCounter}">
+            <div class="sample-group" data-sample-id="${sampleCounter}">
                 <button class="remove-sample" onclick="removeSample(${sampleCounter})">&times;</button>
                 <p>サンプル ${sampleCounter}</p>
                 <div>
                     <label>全体文字列</label>
-                    <input type="text">
+                    <input type="text" class="full-text">
                 </div>
                 <div>
                     <label>取得したい文字列</label>
-                    <input type="text">
+                    <input type="text" class="target-text">
                 </div>
             </div>
         `;
@@ -39,4 +41,31 @@ document.addEventListener('DOMContentLoaded', function() {
             sampleCounter--;
         }
     };
+
+    // データを取得
+    function getAllSamples() {
+        const samples = [];
+        const sampleGroups = document.querySelectorAll('.sample-group');
+        
+        sampleGroups.forEach((group, index) => {
+            const fullText = group.querySelector('.full-text').value.trim();
+            const targetText = group.querySelector('.target-text').value.trim();
+            
+            if (fullText && targetText) {
+                samples.push({
+                    id: index + 1,
+                    fullText: fullText,
+                    targetText: targetText
+                });
+            }
+        });
+
+        return samples;
+    }
+
+    // 正規表現の特殊文字をエスケープ処理
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
 });
