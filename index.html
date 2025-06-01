@@ -28,9 +28,7 @@
             <button id="addSampleBtn">+ サンプルを追加</button>
         </div>
         <button id="generateBtn">正規表現を生成</button>
-
         <div id="errorContainer" style="display: none;"></div>
-
         <div id="regexContainer" style="display: none;">
             <h2>生成された正規表現</h2>
             <div>
@@ -40,6 +38,16 @@
         <div id="testContainer" style="display: none;">
             <h2>各サンプルでのテスト結果</h2>
             <div id="testResults">Result</div>
+        </div>
+        <div class="instructions">
+            <h3>使用方法:</h3>
+            <ol>
+                <li>「+ サンプルを追加」ボタンで複数のサンプルを追加できます</li>
+                <li>各サンプルで「全体文字列」と「取得したい文字列」を入力します</li>
+                <li>「正規表現を生成」ボタンをクリックすると、全サンプルに対応する正規表現が生成されます</li>
+                <li>生成された正規表現は各サンプルでテストされ、結果が表示されます</li>
+                <li>生成された正規表現はプログラムで利用できます（最初のキャプチャグループが抽出対象です）</li>
+            </ol>
         </div>
     </div>
     <script src="script.js"></script>
