@@ -1,6 +1,10 @@
 # regex-generator
 正規表現をもっとお手軽に使いたい方向けの自動生成アプリ
 
+▼サンプル
+
+https://kk-a-tech.github.io/regex-generator/
+
 ### マッチくん \~正規表現生成アプリ\~
 ![image](https://github.com/user-attachments/assets/2d8dda0b-3b06-490e-acc3-eb231919eea9)
 
