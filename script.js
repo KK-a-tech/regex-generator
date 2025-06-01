@@ -7,10 +7,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const samplesContainer = document.getElementById('samplesContainer');
     const addSampleBtn = document.getElementById('addSampleBtn');
     const generateBtn = document.getElementById('generateBtn');
+    const regexContainer = document.getElementById('regexContainer');
+    const regexResult = document.getElementById('regexResult');
 
     // イベント登録
     addSampleBtn.addEventListener('click', addSample);
-    generateBtn.addEventListener('click', getAllSamples);
+    generateBtn.addEventListener('click', generateRegex);
 
     // サンプルを追加
     function addSample() {
@@ -44,7 +46,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // データを取得
     function getAllSamples() {
-        const samples = [];
+// debug
+        // const samples = [];
+        const samples = [
+            {
+                id: 1,
+                fullText: 'fullText.test',
+                targetText: '.test',
+            },
+            {
+                id: 2,
+                fullText: 'fullText2.test2',
+                targetText: '.test2',
+            },
+        ];
+
         const sampleGroups = document.querySelectorAll('.sample-group');
         
         sampleGroups.forEach((group, index) => {
@@ -55,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 samples.push({
                     id: index + 1,
                     fullText: fullText,
-                    targetText: targetText
+                    targetText: targetText,
                 });
             }
         });
@@ -63,9 +79,38 @@ document.addEventListener('DOMContentLoaded', function() {
         return samples;
     }
 
+    // 正規表現を生成(表示)
+    function generateRegex() {
+        const samples = getAllSamples();
+        const testArray = [];
+        try {
+             for (const sample of samples) {
+                testText = escapeRegExp(sample.targetText);
+                testArray.push(testText);
+            }
+            result = testArray.join(',');
+            showRegexResult(result);
+        } catch (err) {
+            console.log('generateRegexでエラーが発生しています。');
+            hideResults();
+        }
+    }
+
     // 正規表現の特殊文字をエスケープ処理
     function escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // 結果表示
+    function showRegexResult(regex) {
+        regexResult.textContent = regex;
+        regexContainer.style.display = 'block';
+    }
+
+    // 結果非表示
+    function hideResults() {
+        regexContainer.style.display = 'none';
+        testContainer.style.display = 'none';
     }
 
 });
