@@ -109,82 +109,128 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(`ターゲットテキスト "${sample.targetText}" が見つかりません`);
             }
             
-            const beforeChar = targetIndex > 0 ? sample.fullText[targetIndex - 1] : '';
-            const afterIndex = targetIndex + sample.targetText.length;
-            const afterChar = afterIndex < sample.fullText.length ? sample.fullText[afterIndex] : '';
-
-            const beforeContext = targetIndex > 0 ? sample.fullText.substring(Math.max(0, targetIndex - 3), targetIndex) : '';
-            const afterContext = afterIndex < sample.fullText.length ? sample.fullText.substring(afterIndex, Math.min(sample.fullText.length, afterIndex + 3)) : '';
+            const beforeText = sample.fullText.substring(0, targetIndex);
+            const afterText = sample.fullText.substring(targetIndex + sample.targetText.length);
             
             return {
                 sample,
                 targetIndex,
-                beforeChar,
-                afterChar,
-                beforeContext,
-                afterContext,
-                targetText: sample.targetText
+                beforeText,
+                afterText,
+                targetText: sample.targetText,
+                fullText: sample.fullText
             };
         });
 
-        const commonBeforeChar = findCommonCharacter(contextData.map(data => data.beforeChar));
-        const commonAfterChar = findCommonCharacter(contextData.map(data => data.afterChar));
-
+        // ターゲット部分のパターンを生成
         const targets = contextData.map(data => data.targetText);
         const capturePattern = createOptimalCapture(targets);
 
-        let pattern = '';
+        // 前後のパターンを分析・生成
+        const beforePatterns = contextData.map(data => data.beforeText);
+        const afterPatterns = contextData.map(data => data.afterText);
 
-        if (commonBeforeChar && commonBeforeChar !== '') {
-            pattern += escapeRegExp(commonBeforeChar);
-        }
+        const beforePattern = createPatternFromTexts(beforePatterns);
+        const afterPattern = createPatternFromTexts(afterPatterns);
 
-        pattern += capturePattern;
-
-        if (commonAfterChar && commonAfterChar !== '') {
-            pattern += escapeRegExp(commonAfterChar);
-        }
-
-        if (pattern === capturePattern) {
-            return createFallbackWithContext(contextData);
+        // 全体マッチの正規表現を構築
+        let fullPattern = '^';
+        
+        if (beforePattern) {
+            fullPattern += beforePattern;
         }
         
-        return pattern;
+        fullPattern += capturePattern;
+        
+        if (afterPattern) {
+            fullPattern += afterPattern;
+        }
+        
+        fullPattern += '$';
+
+        return fullPattern;
     }
 
-    function findCommonCharacter(characters) {
-        if (characters.length === 0) return '';
+    function createPatternFromTexts(texts) {
+        if (texts.length === 0) return '';
         
-        const firstChar = characters[0];
-        const isCommon = characters.every(char => char === firstChar);
+        if (texts.every(text => text === texts[0])) {
+            return escapeRegExp(texts[0]);
+        }
         
-        return isCommon ? firstChar : '';
+        if (texts.some(text => text === '')) {
+            const nonEmptyTexts = texts.filter(text => text !== '');
+            if (nonEmptyTexts.length === 0) return '';
+            if (nonEmptyTexts.length === 1) return escapeRegExp(nonEmptyTexts[0]) + '?';
+            return createGenericPattern(nonEmptyTexts) + '?';
+        }
+        
+        return createGenericPattern(texts);
     }
 
-    function createFallbackWithContext(contextData) {
-        const beforeContexts = contextData.map(data => data.beforeContext);
-        const afterContexts = contextData.map(data => data.afterContext);
+    function createGenericPattern(texts) {
+        if (texts.every(text => /^\//.test(text) && text.length > 1)) {
+            return '\/.+';
+        }
         
-        const commonBefore = findCommonSuffix(beforeContexts);
-        const commonAfter = findCommonPrefix(afterContexts);
+        if (texts.every(text => /^https?:\/\//.test(text))) {
+            return 'https?:\\/\\/[^\\/]+';
+        }
         
-        const targets = contextData.map(data => data.targetText);
-        const capturePattern = createOptimalCapture(targets);
+        if (texts.every(text => /@[^@]+$/.test(text))) {
+            return '@[^@]+';
+        }
+        
+        if (texts.every(text => /^\d+\-$/.test(text))) {
+            return '\\d+\\-';
+        }
+        
+        if (texts.every(text => /^\-\d+$/.test(text))) {
+            return '\\-\\d+';
+        }
+        
+        if (texts.every(text => /^\d+$/.test(text))) {
+            return '\\d+';
+        }
+        
+        const commonPrefix = findCommonPrefix(texts);
+        const commonSuffix = findCommonSuffix(texts);
         
         let pattern = '';
         
-        if (commonBefore && commonBefore.length > 0) {
-            pattern += escapeRegExp(commonBefore);
+        if (commonPrefix && commonPrefix.length > 0) {
+            pattern += escapeRegExp(commonPrefix);
+            
+            const remainingTexts = texts.map(text => text.substring(commonPrefix.length));
+            const remainingAfterSuffix = commonSuffix ? 
+                remainingTexts.map(text => text.substring(0, text.length - commonSuffix.length)) : 
+                remainingTexts;
+            
+            if (remainingAfterSuffix.some(text => text.length > 0)) {
+                if (remainingAfterSuffix.every(text => /^\d+$/.test(text))) {
+                    pattern += '\\d+';
+                } else if (remainingAfterSuffix.every(text => /^[a-zA-Z]+$/.test(text))) {
+                    pattern += '[a-zA-Z]+';
+                } else if (remainingAfterSuffix.every(text => /^[a-zA-Z0-9\-_]+$/.test(text))) {
+                    pattern += '[a-zA-Z0-9\\-_]+';
+                } else {
+                    pattern += '.+?';
+                }
+            }
+        } else {
+            if (texts.every(text => /^\d+$/.test(text))) {
+                pattern += '\\d+';
+            } else if (texts.every(text => /^[a-zA-Z]+$/.test(text))) {
+                pattern += '[a-zA-Z]+';
+            } else if (texts.every(text => /^[a-zA-Z0-9\-_]+$/.test(text))) {
+                pattern += '[a-zA-Z0-9\\-_]+';
+            } else {
+                pattern += '.+';
+            }
         }
         
-        pattern += capturePattern;
-        
-        if (commonAfter && commonAfter.length > 0) {
-            pattern += escapeRegExp(commonAfter);
-        }
-        
-        if (pattern === capturePattern) {
-            return createPositionSpecificPattern(contextData);
+        if (commonSuffix && commonSuffix.length > 0) {
+            pattern += escapeRegExp(commonSuffix);
         }
         
         return pattern;
@@ -209,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function findCommonSuffix(strings) {
-        if (strings.length === 0 || strings.some(s => !s)) return '';
+        if (strings.length === 0) return '';
         
         const minLength = Math.min(...strings.map(s => s.length));
         let commonSuffix = '';
@@ -224,52 +270,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         return commonSuffix;
-    }
-
-    function createPositionSpecificPattern(contextData) {
-        const positionAnalysis = contextData.map(data => {
-            const { sample, targetText } = data;
-            const allMatches = [];
-            let searchIndex = 0;
-
-            while (true) {
-                const index = sample.fullText.indexOf(targetText, searchIndex);
-                if (index === -1) break;
-                allMatches.push(index);
-                searchIndex = index + 1;
-            }
-            
-            const targetPosition = allMatches.indexOf(data.targetIndex);
-            
-            return {
-                ...data,
-                allMatches,
-                targetPosition,
-                totalMatches: allMatches.length
-            };
-        });
-
-        const positions = positionAnalysis.map(analysis => analysis.targetPosition);
-        const hasCommonPosition = positions.every(pos => pos === positions[0] && pos !== -1);
-        
-        if (hasCommonPosition && positions[0] > 0) {
-            const firstSample = contextData[0];
-            const delimiter = firstSample.beforeChar;
-            
-            if (delimiter && ['-', '.', '_', ':', ' ', ',', ';', '/', '\\'].includes(delimiter)) {
-                const targets = contextData.map(data => data.targetText);
-                const capturePattern = createOptimalCapture(targets);
-                const escapedDelimiter = escapeRegExp(delimiter);
-
-                const position = positions[0];
-                if (position === 1) {
-                    return `${escapedDelimiter}[^${delimiter}]*${escapedDelimiter}${capturePattern}`;
-                }
-            }
-        }
-
-        const targets = contextData.map(data => data.targetText);
-        return createOptimalCapture(targets);
     }
 
     function createOptimalCapture(targets) {
@@ -289,18 +289,31 @@ document.addEventListener('DOMContentLoaded', function() {
             return '([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})';
         }
 
+        if (targets.every(isURL)) {
+            return '(https?:\\/\\/[^\\s]+)';
+        }
+
         const hasAlpha = targets.some(t => /[a-zA-Z]/.test(t));
         const hasNumeric = targets.some(t => /\d/.test(t));
-        const hasSpecialChars = targets.some(t => /[^a-zA-Z0-9]/.test(t));
+        const hasHyphen = targets.some(t => /-/.test(t));
+        const hasUnderscore = targets.some(t => /_/.test(t));
+        const hasDot = targets.some(t => /\./.test(t));
+        const hasSpecialChars = targets.some(t => /[^a-zA-Z0-9\-_\.]/.test(t));
 
         if (hasSpecialChars) {
             return '([^\\s]+)';
-        } else if (hasAlpha && hasNumeric) {
-            return '([a-zA-Z0-9]+)';
-        } else if (hasNumeric) {
-            return '(\\d+)';
-        } else if (hasAlpha) {
-            return '([a-zA-Z]+)';
+        } else {
+            let charClass = '';
+            
+            if (hasAlpha) charClass += 'a-zA-Z';
+            if (hasNumeric) charClass += '0-9';
+            if (hasHyphen) charClass += '\\-';
+            if (hasUnderscore) charClass += '_';
+            if (hasDot) charClass += '\\.';
+            
+            if (charClass) {
+                return `([${charClass}]+)`;
+            }
         }
 
         return '(.+?)';
@@ -317,6 +330,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function isEmail(text) {
         return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(text);
+    }
+
+    function isURL(text) {
+        return /^https?:\/\/[^\s]+$/.test(text);
     }
 
     function escapeRegExp(string) {
